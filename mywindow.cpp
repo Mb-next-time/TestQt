@@ -1,49 +1,76 @@
 #include "mywindow.h"
 
-MyWindow::MyWindow(QWidget *parent) : QWidget(parent) {
+Image::Image() {
 
-    imageCurent = new QPixmap;
-    QPixmap buf(500, 500);
-    buf.fill(Qt::white);
-    *imageCurent = buf;
+}
 
-    /*
-    if(imageCurent->load("C:/Users/Mb_next_time/Desktop/test/testClass/resource/4.jpg")) {
-        QMessageBox check;
-        check.setText("Успешно");
-        check.exec();
+Image::Image(QString _name, QPixmap _image) {
+    name = _name;
+    image = _image;
+    width = _image.width();
+    heigth = _image.height();
+}
+
+void Image::defineDiag() {
+    diag = qPow((qPow(width, 2) + qPow(heigth,2)), (qreal)1/2);
+}
+
+void Image::defineLayers() {
+
+    if(width <= heigth) {
+        while(width != 0) {
+            width /=2;
+            layers++;
+        }
     }
     else {
-        QMessageBox check;
-        check.setText("Файл не загружен");
-        check.exec();
+        while(heigth != 0) {
+            heigth /=2;
+            layers++;
+        }
     }
-    */
+}
 
+QPixmap Image::getImage() {
+    return image;
+}
+int unsigned Image::getWidth() {
+    return width;
+}
+
+int unsigned Image::getHeigth() {
+    return heigth;
+}
+
+int unsigned Image::getLayers() {
+    return layers;
+}
+qreal Image::getDiag() {
+    return diag;
+}
+
+MyWindow::MyWindow(QWidget *parent) : QWidget(parent) {
+
+    imageCurent = new QPixmap(500, 500);
+    imageCurent->fill(Qt::white);
     imageSource = new QPixmap;
-    //imageSource->load(":\resource\4.jpg");
+
     display = new QLabel;
     display->setPixmap(*imageCurent);
     display->setAutoFillBackground(true);
     display->adjustSize();
 
     sa = new QScrollArea;
-    sa->setMinimumHeight(500);
-    sa->setMinimumWidth(500);
+    sa->setMinimumHeight(502);
+    sa->setMinimumWidth(502);
     sa->setAlignment(Qt::AlignCenter);
     sa->setWidget(display);
 
-    layers = new QComboBox;
-
-
-    int maxLayers = defineLayers(imageSource->width(), imageSource->height());
-
-    for(int i = 0; i < maxLayers; i++) {
-         layers->addItem(QString::number(i));
-    }
+    listLayers = new QComboBox;
+    listFiles = new QComboBox;
 
     infoSize = new QLabel;
-    infoSize->setText(QString::number(imageCurent->width()) + " x " + QString::number(imageCurent->height()));
+    infoSize->setText(QString::number(imageCurrent->width()) + " x " + QString::number(imageCurrent->height()));
 
     QVBoxLayout *work = new QVBoxLayout;
     QHBoxLayout *interFace = new QHBoxLayout;
@@ -51,95 +78,87 @@ MyWindow::MyWindow(QWidget *parent) : QWidget(parent) {
     openBut = new QPushButton("Open");
 
     interFace->addWidget(openBut);
-    interFace->addWidget(layers);
+    interFace->addWidget(listFiles);
+    interFace->addWidget(listLayers);
     interFace->addWidget(infoSize);
     work->addWidget(sa);
     work->addItem(interFace);
     setWindowTitle("Pyramid");
     setLayout(work);
 
-    connect(layers, SIGNAL(currentIndexChanged(int)), this, SLOT(changeLayer(int)));
+    connect(listLayers, SIGNAL(currentIndexChanged(int)), this, SLOT(changeLayer(int)));
+    connect(listFiles, SIGNAL(currentIndexChanged(int)), this, SLOT(changeFile(int)));
     connect(openBut, SIGNAL(clicked(bool)), this, SLOT(open()));
 }
 
-int MyWindow::defineLayers(int width, int height) {
+void MyWindow::changeFile(int number) {
 
-    int countLayers = 0;
+    *imageCurent = images[number].getImage();
+    *imageSource = images[number].getImage();
+    display->setPixmap(*imageCurrent);
+    display->adjustSize();
 
-    if(width <= height) {
-        while(width != 0) {
-            width /=2;
-            countLayers++;
-        }
+    //refresh listLayers
+    listLayers->clear();
+
+    for(int unsigned i = 0; i < images[number].getLayers(); i++) {
+        listLayers->addItem(QString::number(i));
     }
-    else {
-        while(height != 0) {
-            height /=2;
-            countLayers++;
-        }
-    }
-
-    return countLayers;
 }
 
 void MyWindow::changeLayer(int layer) {
 
-    // добавить хэш-таблицу
-    if(layer > 0) {
+    if(layer > -1) {
         qreal koef = qPow(2, layer);
         QPixmap *imageBuf = new QPixmap;
         *imageBuf = imageSource->scaled(imageSource->width()/koef, imageSource->height()/koef,  Qt::IgnoreAspectRatio);
         infoSize->setText(QString::number((int)imageSource->width()/(int)koef) + " x " + QString::number((int)imageSource->height()/(int)koef));
         *imageCurent = imageBuf->scaled(imageBuf->width()*koef, imageBuf->height()*koef,  Qt::IgnoreAspectRatio);
-        display->setPixmap(*imageCurent);
+        display->setPixmap(*imageCurrent);
+        display->adjustSize();
         delete imageBuf;
     }
 }
 
-void MyWindow::setImage(const QPixmap &image) {
+void MyWindow::setImage(const QString &fileName) {
 
-    *imageSource = image;
-    *imageCurent = image;
+    imageCurrent->load(fileName);
+    imageSource->load(fileName);
 
+    Image buf(fileName, *imageCurent);
+    buf.defineDiag();
+    buf.defineLayers();
+    images.push_back(buf);
+    /*
+    QMessageBox mess;
+    mess.setText("Layers: " + QString::number(buf.getLayers()) + "\n" + "Diag: " + QString::number(buf.getDiag()));
+    mess.exec();
+    */
     display->setPixmap(*imageCurent);
-
-    int maxLayers = defineLayers(imageSource->width(), imageSource->height());
-
-    for(int i = 0; i < maxLayers; i++) {
-         layers->addItem(QString::number(i));
-    }
-}
-
-bool MyWindow::loadFile(const QString &fileName) {
-
-    QImageReader reader(fileName);
-    reader.setAutoTransform(true);
-    QImage newImage = reader.read();
-
-    QPixmap buf;
-    buf.load(fileName);
-    *imageCurent = buf;
-    *imageSource = buf;
-
-    QMessageBox test;
-    test.setText(QString::number(imageSource->height()));
-    test.exec();
 
     sa->resize(imageSource->width(), imageSource->height());
     sa->setVisible(true);
     display->setAutoFillBackground(true);
-    infoSize->setText(QString::number(imageCurent->width()) + " x " + QString::number(imageCurent->height()));
-    display->setPixmap(*imageCurent);
+    infoSize->setText(QString::number(imageCurrent->width()) + " x " + QString::number(imageCurrent->height()));
+    display->setPixmap(*imageCurrent);
     display->adjustSize();
     sa->setWidget(display);
+}
 
-    layers->clear();
-    int maxLayers = defineLayers(imageSource->width(), imageSource->height());
+bool MyWindow::loadFile(const QString &fileName) {
 
-    for(int i = 0; i < maxLayers; i++) {
-         layers->addItem(QString::number(i));
+    setImage(fileName);
+
+    listLayers->clear();
+
+    // refresh combobox
+    for(int unsigned i = 0; i < images[currenNumberImages].getLayers(); i++) {
+        listLayers->addItem(QString::number(i));
     }
-    layers->update();
+
+    listFiles->addItem(fileName);
+    currentNumberFiles++;
+
     return true;
 }
 
