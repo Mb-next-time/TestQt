@@ -33,6 +33,10 @@ void Image::defineLayers() {
     }
 }
 
+QString Image::getName() {
+    return name;
+}
+
 QPixmap Image::getImage() {
     return image;
 }
@@ -47,7 +51,8 @@ int unsigned Image::getHeight() {
 int unsigned Image::getLayers() {
     return layers;
 }
-qreal Image::getDiag() {
+
+qreal Image::getDiag() const {
     return diag;
 }
 
@@ -99,16 +104,18 @@ MyWindow::MyWindow(QWidget *parent) : QWidget(parent) {
 
 void MyWindow::changeFile(int number) {
 
-    *imageCurrent = images[number].getImage();
-    *imageSource = images[number].getImage();
-    display->setPixmap(*imageCurrent);
-    display->adjustSize();
+    if(number > -1) {
+        *imageCurrent = images[number].getImage();
+        *imageSource = images[number].getImage();
+        display->setPixmap(*imageCurrent);
+        display->adjustSize();
 
-    //refresh listLayers
-    listLayers->clear();
+        //refresh listLayers
+        listLayers->clear();
 
-    for(int unsigned i = 0; i < images[number].getLayers(); i++) {
-        listLayers->addItem(QString::number(i));
+        for(int unsigned i = 0; i < images[number].getLayers(); i++) {
+            listLayers->addItem(QString::number(i));
+        }
     }
 }
 
@@ -144,6 +151,11 @@ void MyWindow::setImage(const QString &fileName) {
     sa->setWidget(display);
 }
 
+bool comp(const Image &value1,  const Image &value2) {
+
+    return value1.getDiag() < value2.getDiag();
+}
+
 bool MyWindow::loadFile(const QString &fileName) {
 
     setImage(fileName);
@@ -155,7 +167,13 @@ bool MyWindow::loadFile(const QString &fileName) {
         listLayers->addItem(QString::number(i));
     }
 
-    listFiles->addItem(fileName);
+    std::sort(images.begin(), images.end(), comp);
+
+    listFiles->clear();
+    for(int i = 0; i < images.size(); i++) {
+        listFiles->addItem(images[i].getName());
+    }
+
     currentNumberFiles++;
 
     return true;
@@ -179,8 +197,9 @@ static void initializeImageFileDialog(QFileDialog &dialog, QFileDialog::AcceptMo
     mimeTypeFilters.sort();
     dialog.setMimeTypeFilters(mimeTypeFilters);
     dialog.selectMimeTypeFilter("image/jpeg");
-    if (acceptMode == QFileDialog::AcceptSave)
+    if (acceptMode == QFileDialog::AcceptSave) {
         dialog.setDefaultSuffix("jpg");
+    }
 }
 
 void MyWindow::open() {

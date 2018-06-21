@@ -2,16 +2,18 @@
 #define MYWINDOW_H
 
 #include <QtWidgets>
+#include <QtAlgorithms>
 
 class Image {
 public:
     Image();
     Image(QString , QPixmap);
+    QString getName();
     QPixmap getImage();
     int unsigned getWidth();
     int unsigned getHeight();
     int unsigned getLayers();
-    qreal getDiag();
+    qreal getDiag() const;
     ~Image();
 private:
     QString name;
