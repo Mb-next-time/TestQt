@@ -7,20 +7,21 @@ class Image {
 public:
     Image();
     Image(QString , QPixmap);
-    void defineLayers();
-    void defineDiag();
     QPixmap getImage();
     int unsigned getWidth();
-    int unsigned getHeigth();
+    int unsigned getHeight();
     int unsigned getLayers();
     qreal getDiag();
+    ~Image();
 private:
     QString name;
     QPixmap image;
     int unsigned width = 0;
-    int unsigned heigth = 0;
+    int unsigned height = 0;
     int unsigned layers = 0;
     qreal diag = 0;
+    void defineLayers();
+    void defineDiag();
 };
 
 class MyWindow : public QWidget {

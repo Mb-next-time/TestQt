@@ -8,24 +8,26 @@ Image::Image(QString _name, QPixmap _image) {
     name = _name;
     image = _image;
     width = _image.width();
-    heigth = _image.height();
+    height = _image.height();
+    defineDiag();
+    defineLayers();
 }
 
 void Image::defineDiag() {
-    diag = qPow((qPow(width, 2) + qPow(heigth,2)), (qreal)1/2);
+    diag = qPow((qPow(width, 2) + qPow(height,2)), (qreal)1/2);
 }
 
 void Image::defineLayers() {
 
-    if(width <= heigth) {
+    if(width <= height) {
         while(width != 0) {
             width /=2;
             layers++;
         }
     }
     else {
-        while(heigth != 0) {
-            heigth /=2;
+        while(height != 0) {
+            height /=2;
             layers++;
         }
     }
@@ -38,8 +40,8 @@ int unsigned Image::getWidth() {
     return width;
 }
 
-int unsigned Image::getHeigth() {
-    return heigth;
+int unsigned Image::getHeight() {
+    return height;
 }
 
 int unsigned Image::getLayers() {
@@ -49,14 +51,18 @@ qreal Image::getDiag() {
     return diag;
 }
 
+Image::~Image() {
+
+}
+
 MyWindow::MyWindow(QWidget *parent) : QWidget(parent) {
 
-    imageCurent = new QPixmap(500, 500);
-    imageCurent->fill(Qt::white);
+    imageCurrent = new QPixmap(500, 500);
+    imageCurrent->fill(Qt::white);
     imageSource = new QPixmap;
 
     display = new QLabel;
-    display->setPixmap(*imageCurent);
+    display->setPixmap(*imageCurrent);
     display->setAutoFillBackground(true);
     display->adjustSize();
 
@@ -93,7 +99,7 @@ MyWindow::MyWindow(QWidget *parent) : QWidget(parent) {
 
 void MyWindow::changeFile(int number) {
 
-    *imageCurent = images[number].getImage();
+    *imageCurrent = images[number].getImage();
     *imageSource = images[number].getImage();
     display->setPixmap(*imageCurrent);
     display->adjustSize();
@@ -113,7 +119,7 @@ void MyWindow::changeLayer(int layer) {
         QPixmap *imageBuf = new QPixmap;
         *imageBuf = imageSource->scaled(imageSource->width()/koef, imageSource->height()/koef,  Qt::IgnoreAspectRatio);
         infoSize->setText(QString::number((int)imageSource->width()/(int)koef) + " x " + QString::number((int)imageSource->height()/(int)koef));
-        *imageCurent = imageBuf->scaled(imageBuf->width()*koef, imageBuf->height()*koef,  Qt::IgnoreAspectRatio);
+        *imageCurrent = imageBuf->scaled(imageBuf->width()*koef, imageBuf->height()*koef,  Qt::IgnoreAspectRatio);
         display->setPixmap(*imageCurrent);
         display->adjustSize();
         delete imageBuf;
@@ -125,17 +131,10 @@ void MyWindow::setImage(const QString &fileName) {
     imageCurrent->load(fileName);
     imageSource->load(fileName);
 
-    Image buf(fileName, *imageCurent);
-    buf.defineDiag();
-    buf.defineLayers();
+    Image buf(fileName, *imageCurrent);
     images.push_back(buf);
-    /*
-    QMessageBox mess;
-    mess.setText("Layers: " + QString::number(buf.getLayers()) + "\n" + "Diag: " + QString::number(buf.getDiag()));
-    mess.exec();
-    */
-    display->setPixmap(*imageCurent);
 
+    display->setPixmap(*imageCurrent);
     sa->resize(imageSource->width(), imageSource->height());
     sa->setVisible(true);
     display->setAutoFillBackground(true);
@@ -152,7 +151,7 @@ bool MyWindow::loadFile(const QString &fileName) {
     listLayers->clear();
 
     // refresh combobox
-    for(int unsigned i = 0; i < images[currenNumberImages].getLayers(); i++) {
+    for(int unsigned i = 0; i < images[currentNumberFiles].getLayers(); i++) {
         listLayers->addItem(QString::number(i));
     }
 
