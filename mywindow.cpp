@@ -1,5 +1,8 @@
 #include "mywindow.h"
 
+// for test
+qreal koefDecreas = 2;
+
 Image::Image() {
 
 }
@@ -20,14 +23,14 @@ void Image::defineDiag() {
 void Image::defineLayers() {
 
     if(width <= height) {
-        while(width != 0) {
-            width /=2;
+        while(width > 0) {
+            width /=koefDecreas;
             layers++;
         }
     }
     else {
-        while(height != 0) {
-            height /=2;
+        while(height > 0) {
+            height /=koefDecreas;
             layers++;
         }
     }
@@ -119,17 +122,97 @@ void MyWindow::changeFile(int number) {
     }
 }
 
+QPixmap blur(QPixmap image) {
+
+    QImage blur = image.toImage();
+    QImage source = image.toImage();
+
+    // blur.setP
+    QMatrix3x3 kernel;
+        kernel(0, 0) = 1; kernel(0, 1) = 2; kernel(0, 2) = 1;
+        kernel(1, 0) = 2; kernel(1, 1) = 4; kernel(1, 2) = 2;
+        kernel(2, 0) = 1; kernel(2, 1) = 2; kernel(2, 2) = 1;
+        float kernel_sum = 16.0;
+
+
+        for(int i=1; i<source.width()-1; i++)
+        {
+            for(int j=1; j<source.height()-1; j++)
+            {
+                float red = 0, green = 0, blue = 0;
+
+                // *****************************************************
+                red =
+                        kernel(0, 0) * qRed(source.pixel(i+1, j+1)) +
+                        kernel(0, 1) * qRed(source.pixel(i, j+1)) +
+                        kernel(0, 2) * qRed(source.pixel(i-1, j+1)) +
+
+                        kernel(1, 0) * qRed(source.pixel(i+1, j)) +
+                        kernel(1, 1) * qRed(source.pixel(i, j)) +
+                        kernel(1, 2) * qRed(source.pixel(i-1, j)) +
+
+                        kernel(2, 0) * qRed(source.pixel(i+1, j-1)) +
+                        kernel(2, 1) * qRed(source.pixel(i, j-1)) +
+                        kernel(2, 2) * qRed(source.pixel(i-1, j-1));
+
+                // *****************************************************
+                green =
+                        kernel(0, 0) * qGreen(source.pixel(i+1, j+1)) +
+                        kernel(0, 1) * qGreen(source.pixel(i, j+1)) +
+                        kernel(0, 2) * qGreen(source.pixel(i-1, j+1)) +
+
+                        kernel(1, 0) * qGreen(source.pixel(i+1, j)) +
+                        kernel(1, 1) * qGreen(source.pixel(i, j)) +
+                        kernel(1, 2) * qGreen(source.pixel(i-1, j)) +
+
+                        kernel(2, 0) * qGreen(source.pixel(i+1, j-1)) +
+                        kernel(2, 1) * qGreen(source.pixel(i, j-1)) +
+                        kernel(2, 2) * qGreen(source.pixel(i-1, j-1));
+
+                // *****************************************************
+                blue =
+                        kernel(0, 0) * qBlue(source.pixel(i+1, j+1)) +
+                        kernel(0, 1) * qBlue(source.pixel(i, j+1)) +
+                        kernel(0, 2) * qBlue(source.pixel(i-1, j+1)) +
+
+                        kernel(1, 0) * qBlue(source.pixel(i+1, j)) +
+                        kernel(1, 1) * qBlue(source.pixel(i, j)) +
+                        kernel(1, 2) * qBlue(source.pixel(i-1, j)) +
+
+                        kernel(2, 0) * qBlue(source.pixel(i+1, j-1)) +
+                        kernel(2, 1) * qBlue(source.pixel(i, j-1)) +
+                        kernel(2, 2) * qBlue(source.pixel(i-1, j-1));
+
+                blur.setPixel(i,j, qRgb(red/kernel_sum, green/kernel_sum, blue/kernel_sum));
+
+            }
+        }
+
+    image = QPixmap::fromImage(blur);
+
+    return image;
+}
+
 void MyWindow::changeLayer(int layer) {
 
     if(layer > -1) {
-        qreal koef = qPow(2, layer);
-        QPixmap *imageBuf = new QPixmap;
-        *imageBuf = imageSource->scaled(imageSource->width()/koef, imageSource->height()/koef,  Qt::IgnoreAspectRatio);
-        infoSize->setText(QString::number((int)imageSource->width()/(int)koef) + " x " + QString::number((int)imageSource->height()/(int)koef));
-        *imageCurrent = imageBuf->scaled(imageBuf->width()*koef, imageBuf->height()*koef,  Qt::IgnoreAspectRatio);
-        display->setPixmap(*imageCurrent);
-        display->adjustSize();
-        delete imageBuf;
+        if(layer == 0) {
+            infoSize->setText(QString::number(imageSource->width()) + " x " + QString::number(imageSource->height()));
+            *imageCurrent = *imageSource;
+            display->setPixmap(*imageCurrent);
+        }
+        else {
+            QPixmap blurSource;
+            blurSource = blur(*imageSource);
+            qreal koef = qPow(koefDecreas, layer);
+            QPixmap *imageBuf = new QPixmap;
+            *imageBuf = blurSource.scaled(blurSource.width()/koef, blurSource.height()/koef,  Qt::IgnoreAspectRatio);
+            infoSize->setText(QString::number((int)blurSource.width()/(int)koef) + " x " + QString::number((int)blurSource.height()/(int)koef));
+            *imageCurrent = imageBuf->scaled(imageBuf->width()*koef, imageBuf->height()*koef,  Qt::IgnoreAspectRatio);
+            display->setPixmap(*imageCurrent);
+            display->adjustSize();
+            delete imageBuf;
+        }
     }
 }
 
@@ -179,32 +262,27 @@ bool MyWindow::loadFile(const QString &fileName) {
     return true;
 }
 
-static void initializeImageFileDialog(QFileDialog &dialog, QFileDialog::AcceptMode acceptMode) {
-
-    static bool firstDialog = true;
-
-    if (firstDialog) {
-        firstDialog = false;
-        const QStringList picturesLocations = QStandardPaths::standardLocations(QStandardPaths::PicturesLocation);
-        dialog.setDirectory(picturesLocations.isEmpty() ? QDir::currentPath() : picturesLocations.last());
-    }
-
-    QStringList mimeTypeFilters;
-    const QByteArrayList supportedMimeTypes = acceptMode == QFileDialog::AcceptOpen
-        ? QImageReader::supportedMimeTypes() : QImageWriter::supportedMimeTypes();
-    foreach (const QByteArray &mimeTypeName, supportedMimeTypes)
-        mimeTypeFilters.append(mimeTypeName);
-    mimeTypeFilters.sort();
-    dialog.setMimeTypeFilters(mimeTypeFilters);
-    dialog.selectMimeTypeFilter("image/jpeg");
-    if (acceptMode == QFileDialog::AcceptSave) {
-        dialog.setDefaultSuffix("jpg");
-    }
-}
-
 void MyWindow::open() {
 
-    QFileDialog dialog(this, tr("Open file"));
-    initializeImageFileDialog(dialog, QFileDialog::AcceptOpen);
-    while (dialog.exec() == QDialog::Accepted && !loadFile(dialog.selectedFiles().first())) {}
+    QString fileName = QFileDialog::getOpenFileName(this, "Open file", qApp->applicationDirPath(), "Images (*.jpg *.png)");
+        if(!QFile(fileName).exists())
+            return;
+
+    setImage(fileName);
+
+    listLayers->clear();
+
+    // refresh combobox
+    for(int unsigned i = 0; i < images[currentNumberFiles].getLayers(); i++) {
+        listLayers->addItem(QString::number(i));
+    }
+
+    std::sort(images.begin(), images.end(), comp);
+
+    listFiles->clear();
+    for(int i = 0; i < images.size(); i++) {
+        listFiles->addItem(images[i].getName());
+    }
+
+    currentNumberFiles++;
 }
