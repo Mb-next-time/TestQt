@@ -63,38 +63,58 @@ Image::~Image() {
 
 }
 
-MyWindow::MyWindow(QWidget *parent) : QWidget(parent) {
+void MyWindow::setImage() {
 
-    imageCurrent = new QPixmap(500, 500);
-    imageCurrent->fill(Qt::white);
-    imageSource = new QPixmap;
-
-    display = new QLabel;
     display->setPixmap(*imageCurrent);
-    display->setAutoFillBackground(true);
-    display->adjustSize();
-
-    sa = new QScrollArea;
     sa->setMinimumHeight(502);
     sa->setMinimumWidth(502);
     sa->setAlignment(Qt::AlignCenter);
+    sa->resize(imageSource->width(), imageSource->height());
+    sa->setVisible(true);
+    display->setAutoFillBackground(true);
+    lblResol->setText(QString::number(imageCurrent->width()) + " x " + QString::number(imageCurrent->height()));
+    display->setPixmap(*imageCurrent);
+    display->adjustSize();
     sa->setWidget(display);
+}
 
+MyWindow::MyWindow(QWidget *parent) : QWidget(parent) {
+
+    int initWidth = 500;
+    int initHeight = 500;
+
+    imageCurrent = new QPixmap(initWidth, initHeight);
+    imageCurrent->fill(Qt::white);
+    imageSource = new QPixmap(initWidth, initHeight);
+    imageSource->fill(Qt::white);
+    display = new QLabel;
+    sa = new QScrollArea;
+    lblLayers = new QLabel("Layers");
     listLayers = new QComboBox;
+    lblFile = new QLabel("File");
     listFiles = new QComboBox;
-
-    infoSize = new QLabel;
-    infoSize->setText(QString::number(imageCurrent->width()) + " x " + QString::number(imageCurrent->height()));
-
+    lblSize = new QLabel("Size:");
+    lblResol = new QLabel;
+    openBut = new QPushButton("Open");
     QVBoxLayout *work = new QVBoxLayout;
     QHBoxLayout *interFace = new QHBoxLayout;
 
-    openBut = new QPushButton("Open");
+    setImage();
 
     interFace->addWidget(openBut);
+    interFace->addWidget(lblFile);
     interFace->addWidget(listFiles);
+    interFace->addWidget(lblLayers);
     interFace->addWidget(listLayers);
-    interFace->addWidget(infoSize);
+    interFace->addWidget(lblSize);
+    interFace->addWidget(lblResol);
+
+    interFace->setSpacing(10);
+    interFace->setStretch(0, 20);
+    interFace->setStretch(1, 10);
+    interFace->setStretch(2, 25);
+    interFace->setStretch(3, 10);
+
     work->addWidget(sa);
     work->addItem(interFace);
     setWindowTitle("Pyramid");
@@ -105,6 +125,40 @@ MyWindow::MyWindow(QWidget *parent) : QWidget(parent) {
     connect(openBut, SIGNAL(clicked(bool)), this, SLOT(open()));
 }
 
+void MyWindow::refreshListLayers(int index) {
+
+    listLayers->clear();
+
+    for(int unsigned i = 0; i < images[index].getLayers(); i++) {
+        listLayers->addItem(QString::number(i));
+    }
+    listLayers->update();
+}
+
+void MyWindow::refreshListFiles() {
+
+    listFiles->clear();
+    for(int i = 0; i < images.size(); i++) {
+        listFiles->addItem(images[i].getName());
+    }
+    listFiles->update();
+
+}
+
+int MyWindow::findIndex(QString &fileName) {
+
+    int index;
+
+    for(int i = 0; i < images.size(); i++) {
+        if(images[i].getName() == fileName) {
+            index = i;
+            break;
+        }
+    }
+
+    return index;
+}
+
 void MyWindow::changeFile(int number) {
 
     if(number > -1) {
@@ -113,12 +167,7 @@ void MyWindow::changeFile(int number) {
         display->setPixmap(*imageCurrent);
         display->adjustSize();
 
-        //refresh listLayers
-        listLayers->clear();
-
-        for(int unsigned i = 0; i < images[number].getLayers(); i++) {
-            listLayers->addItem(QString::number(i));
-        }
+        refreshListLayers(number);
     }
 }
 
@@ -135,10 +184,8 @@ QPixmap blur(QPixmap image) {
         float kernel_sum = 16.0;
 
 
-        for(int i=1; i<source.width()-1; i++)
-        {
-            for(int j=1; j<source.height()-1; j++)
-            {
+        for(int i=1; i<source.width()-1; i++) {
+            for(int j=1; j<source.height()-1; j++) {
                 float red = 0, green = 0, blue = 0;
 
                 // *****************************************************
@@ -197,69 +244,32 @@ void MyWindow::changeLayer(int layer) {
 
     if(layer > -1) {
         if(layer == 0) {
-            infoSize->setText(QString::number(imageSource->width()) + " x " + QString::number(imageSource->height()));
+            lblResol->setText(QString::number(imageSource->width()) + " x " + QString::number(imageSource->height()));
             *imageCurrent = *imageSource;
             display->setPixmap(*imageCurrent);
+            display->adjustSize();
         }
         else {
-            QPixmap blurSource;
-            blurSource = blur(*imageSource);
-            qreal koef = qPow(koefDecreas, layer);
+            qreal koef = qPow(koefDecreas, layer - 1);
             QPixmap *imageBuf = new QPixmap;
-            *imageBuf = blurSource.scaled(blurSource.width()/koef, blurSource.height()/koef,  Qt::IgnoreAspectRatio);
-            infoSize->setText(QString::number((int)blurSource.width()/(int)koef) + " x " + QString::number((int)blurSource.height()/(int)koef));
+            QPixmap *imageBlur = new QPixmap;
+            *imageBuf = imageSource->scaled(imageSource->width()/koef, imageSource->height()/koef,  Qt::IgnoreAspectRatio);
+            *imageBlur = blur(*imageBuf);
+            koef = qPow(koefDecreas, layer);
+            *imageBuf = imageBlur->scaled(imageSource->width()/koef, imageSource->height()/koef,  Qt::IgnoreAspectRatio);
+            lblResol->setText(QString::number((int)(imageSource->width()/koef)) + " x " + QString::number((int)(imageSource->height()/koef)));
             *imageCurrent = imageBuf->scaled(imageBuf->width()*koef, imageBuf->height()*koef,  Qt::IgnoreAspectRatio);
             display->setPixmap(*imageCurrent);
             display->adjustSize();
             delete imageBuf;
+            delete imageBlur;
         }
     }
-}
-
-void MyWindow::setImage(const QString &fileName) {
-
-    imageCurrent->load(fileName);
-    imageSource->load(fileName);
-
-    Image buf(fileName, *imageCurrent);
-    images.push_back(buf);
-
-    display->setPixmap(*imageCurrent);
-    sa->resize(imageSource->width(), imageSource->height());
-    sa->setVisible(true);
-    display->setAutoFillBackground(true);
-    infoSize->setText(QString::number(imageCurrent->width()) + " x " + QString::number(imageCurrent->height()));
-    display->setPixmap(*imageCurrent);
-    display->adjustSize();
-    sa->setWidget(display);
 }
 
 bool comp(const Image &value1,  const Image &value2) {
 
     return value1.getDiag() < value2.getDiag();
-}
-
-bool MyWindow::loadFile(const QString &fileName) {
-
-    setImage(fileName);
-
-    listLayers->clear();
-
-    // refresh combobox
-    for(int unsigned i = 0; i < images[currentNumberFiles].getLayers(); i++) {
-        listLayers->addItem(QString::number(i));
-    }
-
-    std::sort(images.begin(), images.end(), comp);
-
-    listFiles->clear();
-    for(int i = 0; i < images.size(); i++) {
-        listFiles->addItem(images[i].getName());
-    }
-
-    currentNumberFiles++;
-
-    return true;
 }
 
 void MyWindow::open() {
@@ -268,21 +278,20 @@ void MyWindow::open() {
         if(!QFile(fileName).exists())
             return;
 
-    setImage(fileName);
+    QPixmap bufQ;
+    bufQ.load(fileName);
 
-    listLayers->clear();
-
-    // refresh combobox
-    for(int unsigned i = 0; i < images[currentNumberFiles].getLayers(); i++) {
-        listLayers->addItem(QString::number(i));
-    }
+    Image buf(fileName, bufQ);
+    images.push_back(buf);
 
     std::sort(images.begin(), images.end(), comp);
 
-    listFiles->clear();
-    for(int i = 0; i < images.size(); i++) {
-        listFiles->addItem(images[i].getName());
-    }
+    refreshListFiles();
 
-    currentNumberFiles++;
+    int index = findIndex(fileName);
+
+    *imageCurrent = images[index].getImage();
+    *imageSource = images[index].getImage();
+    refreshListLayers(index);
+    setImage();
 }

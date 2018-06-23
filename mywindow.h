@@ -32,21 +32,24 @@ public:
     MyWindow(QWidget *parent=0);
 private:
     QLabel *display;
+    QLabel *lblResol;
+    QLabel *lblSize;
+    QLabel *lblLayers;
+    QLabel *lblFile;
     QComboBox *listLayers;
     QComboBox *listFiles;
-    QLabel *infoSize;
     QPixmap *imageCurrent;
     QPixmap *imageSource;
     QScrollArea *sa;
     QPushButton *openBut;
     QVector<Image> images;
-    int unsigned currentNumberFiles = 0;
-    void setImage(const QString &);
-    void refreshList();
-    bool loadFile(const QString &);
+    void setImage();
+    void refreshListLayers(int);
+    void refreshListFiles();
+    int findIndex(QString &);
 private slots:
-    void changeLayer(int layer);
-    void changeFile(int number);
+    void changeLayer(int);
+    void changeFile(int);
     void open();
 };
 
