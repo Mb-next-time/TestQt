@@ -1,14 +1,15 @@
 #include "mywindow.h"
 
 // for test
-qreal koefDecreas = 2;
+qreal reductFactor = 2;
 
 Image::Image() {
 
 }
 
-Image::Image(QString _name, QPixmap _image) {
+Image::Image(QString _name, QString _pathName, QPixmap _image) {
     name = _name;
+    pathName = _pathName;
     image = _image;
     width = _image.width();
     height = _image.height();
@@ -24,16 +25,20 @@ void Image::defineLayers() {
 
     if(width <= height) {
         while(width > 0) {
-            width /=koefDecreas;
+            width /= reductFactor;
             layers++;
         }
     }
     else {
         while(height > 0) {
-            height /=koefDecreas;
+            height /= reductFactor;
             layers++;
         }
     }
+}
+
+QString Image::getPathName() {
+    return pathName;
 }
 
 QString Image::getName() {
@@ -91,6 +96,7 @@ MyWindow::MyWindow(QWidget *parent) : QWidget(parent) {
     sa = new QScrollArea;
     lblLayers = new QLabel("Layers");
     listLayers = new QComboBox;
+    //reductFact = new QLineEdit("Reduction factor");
     lblFile = new QLabel("File");
     listFiles = new QComboBox;
     lblSize = new QLabel("Size:");
@@ -117,6 +123,7 @@ MyWindow::MyWindow(QWidget *parent) : QWidget(parent) {
 
     work->addWidget(sa);
     work->addItem(interFace);
+    //work->addWidget(reductFact);
     setWindowTitle("Pyramid");
     setLayout(work);
 
@@ -145,20 +152,6 @@ void MyWindow::refreshListFiles() {
 
 }
 
-int MyWindow::findIndex(QString &fileName) {
-
-    int index;
-
-    for(int i = 0; i < images.size(); i++) {
-        if(images[i].getName() == fileName) {
-            index = i;
-            break;
-        }
-    }
-
-    return index;
-}
-
 void MyWindow::changeFile(int number) {
 
     if(number > -1) {
@@ -169,6 +162,83 @@ void MyWindow::changeFile(int number) {
 
         refreshListLayers(number);
     }
+}
+
+void MyWindow::changeLayer(int layer) {
+
+    if(layer > -1) {
+        if(layer == 0) {
+            lblResol->setText(QString::number(imageSource->width()) + " x " + QString::number(imageSource->height()));
+            *imageCurrent = *imageSource;
+            display->setPixmap(*imageCurrent);
+            display->adjustSize();
+        }
+        else {
+            qreal koef = qPow(reductFactor, layer - 1);
+            QPixmap *imageBuf = new QPixmap;
+            QPixmap *imageBlur = new QPixmap;
+            *imageBuf = imageSource->scaled(imageSource->width()/koef, imageSource->height()/koef,  Qt::IgnoreAspectRatio);
+            *imageBlur = blur(*imageBuf);
+            koef = qPow(reductFactor, layer);
+            *imageBuf = imageBlur->scaled(imageSource->width()/koef, imageSource->height()/koef,  Qt::IgnoreAspectRatio);
+            lblResol->setText(QString::number((int)(imageSource->width()/koef)) + " x " + QString::number((int)(imageSource->height()/koef)));
+            *imageCurrent = imageBuf->scaled(imageBuf->width()*koef, imageBuf->height()*koef,  Qt::IgnoreAspectRatio);
+            display->setPixmap(*imageCurrent);
+            display->adjustSize();
+            delete imageBuf;
+            delete imageBlur;
+        }
+    }
+}
+
+void MyWindow::open() {
+
+    QString fileName = QFileDialog::getOpenFileName(this, "Open file", qApp->applicationDirPath(), "Images (*.jpg *.png)");
+
+    if(!QFile(fileName).exists())
+        return;
+
+    QPixmap bufQ;
+
+    if(!bufQ.load(fileName))
+        return;
+
+    QString name = parser(fileName);
+
+    int index = findIndex(name, fileName, images);
+
+    if(index == images.size()) {
+        // Add image
+        Image buf(name, fileName, bufQ);
+        images.push_back(buf);
+
+        std::sort(images.begin(), images.end(), comp);
+
+        refreshListFiles();
+
+        index = findIndex(name, fileName, images);
+
+        *imageCurrent = images[index].getImage();
+        *imageSource = images[index].getImage();
+        listFiles->setCurrentIndex(index);
+        refreshListLayers(index);
+
+        setImage();
+    }
+    else {
+        // Image is exist
+        *imageCurrent = images[index].getImage();
+        *imageSource = images[index].getImage();
+        listFiles->setCurrentIndex(index);
+        refreshListLayers(index);
+
+        setImage();
+    }
+}
+
+bool comp(const Image &value1,  const Image &value2) {
+
+    return value1.getDiag() < value2.getDiag();
 }
 
 QPixmap blur(QPixmap image) {
@@ -240,58 +310,29 @@ QPixmap blur(QPixmap image) {
     return image;
 }
 
-void MyWindow::changeLayer(int layer) {
+QString parser(QString str) {
 
-    if(layer > -1) {
-        if(layer == 0) {
-            lblResol->setText(QString::number(imageSource->width()) + " x " + QString::number(imageSource->height()));
-            *imageCurrent = *imageSource;
-            display->setPixmap(*imageCurrent);
-            display->adjustSize();
-        }
-        else {
-            qreal koef = qPow(koefDecreas, layer - 1);
-            QPixmap *imageBuf = new QPixmap;
-            QPixmap *imageBlur = new QPixmap;
-            *imageBuf = imageSource->scaled(imageSource->width()/koef, imageSource->height()/koef,  Qt::IgnoreAspectRatio);
-            *imageBlur = blur(*imageBuf);
-            koef = qPow(koefDecreas, layer);
-            *imageBuf = imageBlur->scaled(imageSource->width()/koef, imageSource->height()/koef,  Qt::IgnoreAspectRatio);
-            lblResol->setText(QString::number((int)(imageSource->width()/koef)) + " x " + QString::number((int)(imageSource->height()/koef)));
-            *imageCurrent = imageBuf->scaled(imageBuf->width()*koef, imageBuf->height()*koef,  Qt::IgnoreAspectRatio);
-            display->setPixmap(*imageCurrent);
-            display->adjustSize();
-            delete imageBuf;
-            delete imageBlur;
+    QStringList list = str.split('/');
+    QString name = list.back();
+
+    return name;
+}
+
+int findIndex(const QString name, const QString pathName, QVector<Image> &data) {
+
+    int index;
+    int i;
+
+    for(i = 0; i < data.size(); i++) {
+        if((data[i].getName() == name) && (data[i].getPathName() == pathName)) {
+            index = i;
+            break;
         }
     }
-}
 
-bool comp(const Image &value1,  const Image &value2) {
+    if(i == data.size()) {
+        index = data.size();
+    }
 
-    return value1.getDiag() < value2.getDiag();
-}
-
-void MyWindow::open() {
-
-    QString fileName = QFileDialog::getOpenFileName(this, "Open file", qApp->applicationDirPath(), "Images (*.jpg *.png)");
-        if(!QFile(fileName).exists())
-            return;
-
-    QPixmap bufQ;
-    bufQ.load(fileName);
-
-    Image buf(fileName, bufQ);
-    images.push_back(buf);
-
-    std::sort(images.begin(), images.end(), comp);
-
-    refreshListFiles();
-
-    int index = findIndex(fileName);
-
-    *imageCurrent = images[index].getImage();
-    *imageSource = images[index].getImage();
-    refreshListLayers(index);
-    setImage();
+    return index;
 }

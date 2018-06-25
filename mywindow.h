@@ -7,7 +7,8 @@
 class Image {
 public:
     Image();
-    Image(QString , QPixmap);
+    Image(QString , QString, QPixmap);
+    QString getPathName();
     QString getName();
     QPixmap getImage();
     int unsigned getWidth();
@@ -16,6 +17,7 @@ public:
     qreal getDiag() const;
     ~Image();
 private:
+    QString pathName;
     QString name;
     QPixmap image;
     int unsigned width = 0;
@@ -36,6 +38,7 @@ private:
     QLabel *lblSize;
     QLabel *lblLayers;
     QLabel *lblFile;
+    //QLineEdit *reductFact;
     QComboBox *listLayers;
     QComboBox *listFiles;
     QPixmap *imageCurrent;
@@ -46,12 +49,16 @@ private:
     void setImage();
     void refreshListLayers(int);
     void refreshListFiles();
-    int findIndex(QString &);
 private slots:
     void changeLayer(int);
     void changeFile(int);
     void open();
 };
 
-#endif // MYWINDOW_H
+// helper functions
+QPixmap blur(QPixmap image);
+bool comp(const Image &,  const Image &);
+QString parser(QString );
+int findIndex(const QString name, const QString pathName, QVector<Image> &data);
 
+#endif // MYWINDOW_H
