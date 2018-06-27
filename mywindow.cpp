@@ -1,8 +1,5 @@
 #include "mywindow.h"
 
-// for test
-qreal reductFactor = 2;
-
 Image::Image() {
 
 }
@@ -14,26 +11,20 @@ Image::Image(QString _name, QString _pathName, QPixmap _image) {
     width = _image.width();
     height = _image.height();
     defineDiag();
-    defineLayers();
 }
 
 void Image::defineDiag() {
     diag = qPow((qPow(width, 2) + qPow(height,2)), (qreal)1/2);
 }
 
-void Image::defineLayers() {
+void Image::defineLayers(qreal reductFactor, int _width, int _height) {
 
-    if(width <= height) {
-        while(width > 0) {
-            width /= reductFactor;
-            layers++;
-        }
-    }
-    else {
-        while(height > 0) {
-            height /= reductFactor;
-            layers++;
-        }
+    layers = 0;
+
+    while((_width > 0) && (_height > 0)) {
+        _width /= reductFactor;
+        _height /= reductFactor;
+        layers++;
     }
 }
 
@@ -96,14 +87,29 @@ MyWindow::MyWindow(QWidget *parent) : QWidget(parent) {
     sa = new QScrollArea;
     lblLayers = new QLabel("Layers");
     listLayers = new QComboBox;
-    //reductFact = new QLineEdit("Reduction factor");
     lblFile = new QLabel("File");
     listFiles = new QComboBox;
     lblSize = new QLabel("Size:");
     lblResol = new QLabel;
     openBut = new QPushButton("Open");
+    lblReductFact = new QLabel("Reduction factor");
+    spinBoxReductFact = new QDoubleSpinBox;
+
+    qreal minSP = 1.1;
+    qreal maxSP = 2.0;
+    qreal stepSP = 0.1;
+    qreal decimalsSP = 1.0;
+    qreal initVal = 2.0;
+
+    spinBoxReductFact->setMinimum(minSP);
+    spinBoxReductFact->setMaximum(maxSP);
+    spinBoxReductFact->setSingleStep(stepSP);
+    spinBoxReductFact->setDecimals(decimalsSP);
+    spinBoxReductFact->setValue(initVal);
+
     QVBoxLayout *work = new QVBoxLayout;
     QHBoxLayout *interFace = new QHBoxLayout;
+    QHBoxLayout *interFaceRF = new QHBoxLayout;
 
     setImage();
 
@@ -115,6 +121,9 @@ MyWindow::MyWindow(QWidget *parent) : QWidget(parent) {
     interFace->addWidget(lblSize);
     interFace->addWidget(lblResol);
 
+    interFaceRF->addWidget(lblReductFact);
+    interFaceRF->addWidget(spinBoxReductFact);
+
     interFace->setSpacing(10);
     interFace->setStretch(0, 20);
     interFace->setStretch(1, 10);
@@ -123,18 +132,21 @@ MyWindow::MyWindow(QWidget *parent) : QWidget(parent) {
 
     work->addWidget(sa);
     work->addItem(interFace);
-    //work->addWidget(reductFact);
+    work->addItem(interFaceRF);
     setWindowTitle("Pyramid");
     setLayout(work);
 
     connect(listLayers, SIGNAL(currentIndexChanged(int)), this, SLOT(changeLayer(int)));
     connect(listFiles, SIGNAL(currentIndexChanged(int)), this, SLOT(changeFile(int)));
     connect(openBut, SIGNAL(clicked(bool)), this, SLOT(open()));
+    connect(spinBoxReductFact, SIGNAL(valueChanged(double)), this, SLOT(changeReductFactor()));
 }
 
 void MyWindow::refreshListLayers(int index) {
 
     listLayers->clear();
+
+    images[index].defineLayers(getReductFactor(),images[index].getWidth(), images[index].getHeight() );
 
     for(int unsigned i = 0; i < images[index].getLayers(); i++) {
         listLayers->addItem(QString::number(i));
@@ -159,7 +171,9 @@ void MyWindow::changeFile(int number) {
         *imageSource = images[number].getImage();
         display->setPixmap(*imageCurrent);
         display->adjustSize();
-
+        //QMessageBox check;
+        //check.setText("Попался");
+        //check.exec();
         refreshListLayers(number);
     }
 }
@@ -174,12 +188,12 @@ void MyWindow::changeLayer(int layer) {
             display->adjustSize();
         }
         else {
-            qreal koef = qPow(reductFactor, layer - 1);
+            qreal koef = qPow(getReductFactor(), layer - 1);
             QPixmap *imageBuf = new QPixmap;
             QPixmap *imageBlur = new QPixmap;
             *imageBuf = imageSource->scaled(imageSource->width()/koef, imageSource->height()/koef,  Qt::IgnoreAspectRatio);
             *imageBlur = blur(*imageBuf);
-            koef = qPow(reductFactor, layer);
+            koef = qPow(getReductFactor(), layer);
             *imageBuf = imageBlur->scaled(imageSource->width()/koef, imageSource->height()/koef,  Qt::IgnoreAspectRatio);
             lblResol->setText(QString::number((int)(imageSource->width()/koef)) + " x " + QString::number((int)(imageSource->height()/koef)));
             *imageCurrent = imageBuf->scaled(imageBuf->width()*koef, imageBuf->height()*koef,  Qt::IgnoreAspectRatio);
@@ -209,7 +223,7 @@ void MyWindow::open() {
 
     if(index == images.size()) {
         // Add image
-        Image buf(name, fileName, bufQ);
+        Image buf(name, fileName, bufQ);       
         images.push_back(buf);
 
         std::sort(images.begin(), images.end(), comp);
@@ -221,7 +235,7 @@ void MyWindow::open() {
         *imageCurrent = images[index].getImage();
         *imageSource = images[index].getImage();
         listFiles->setCurrentIndex(index);
-        refreshListLayers(index);
+        //refreshListLayers(index);
 
         setImage();
     }
@@ -233,6 +247,13 @@ void MyWindow::open() {
         refreshListLayers(index);
 
         setImage();
+    }
+}
+
+void MyWindow::changeReductFactor() {
+
+    if(listFiles->currentIndex() > -1){
+        refreshListLayers(listFiles->currentIndex());
     }
 }
 

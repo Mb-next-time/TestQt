@@ -15,6 +15,7 @@ public:
     int unsigned getHeight();
     int unsigned getLayers();
     qreal getDiag() const;
+    void defineLayers(qreal reductFactor, int _width, int _height);
     ~Image();
 private:
     QString pathName;
@@ -24,7 +25,6 @@ private:
     int unsigned height = 0;
     int unsigned layers = 0;
     qreal diag = 0;
-    void defineLayers();
     void defineDiag();
 };
 
@@ -32,19 +32,23 @@ class MyWindow : public QWidget {
     Q_OBJECT
 public:
     MyWindow(QWidget *parent=0);
+    qreal getReductFactor() {
+        return spinBoxReductFact->value();
+    }
 private:
     QLabel *display;
     QLabel *lblResol;
     QLabel *lblSize;
     QLabel *lblLayers;
     QLabel *lblFile;
-    //QLineEdit *reductFact;
+    QLabel *lblReductFact;
     QComboBox *listLayers;
     QComboBox *listFiles;
     QPixmap *imageCurrent;
     QPixmap *imageSource;
     QScrollArea *sa;
     QPushButton *openBut;
+    QDoubleSpinBox  *spinBoxReductFact;
     QVector<Image> images;
     void setImage();
     void refreshListLayers(int);
@@ -53,6 +57,7 @@ private slots:
     void changeLayer(int);
     void changeFile(int);
     void open();
+    void changeReductFactor();
 };
 
 // helper functions
