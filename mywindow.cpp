@@ -61,9 +61,12 @@ Image::~Image() {
 
 void MyWindow::setImage() {
 
+    int Width = 502;
+    int Height = 502;
+
     display->setPixmap(*imageCurrent);
-    sa->setMinimumHeight(502);
-    sa->setMinimumWidth(502);
+    sa->setMinimumHeight(Height);
+    sa->setMinimumWidth(Width);
     sa->setAlignment(Qt::AlignCenter);
     sa->resize(imageSource->width(), imageSource->height());
     sa->setVisible(true);
@@ -74,7 +77,7 @@ void MyWindow::setImage() {
     sa->setWidget(display);
 }
 
-MyWindow::MyWindow(QWidget *parent) : QWidget(parent) {
+MyWindow::MyWindow(double value, QString fileName) {
 
     int initWidth = 500;
     int initHeight = 500;
@@ -91,6 +94,8 @@ MyWindow::MyWindow(QWidget *parent) : QWidget(parent) {
     listFiles = new QComboBox;
     lblSize = new QLabel("Size:");
     lblResol = new QLabel;
+    lblResol->setMaximumSize(QSize(70, 20));
+    lblResol->setMinimumSize(QSize(60, 20));
     openBut = new QPushButton("Open");
     lblReductFact = new QLabel("Reduction factor");
     spinBoxReductFact = new QDoubleSpinBox;
@@ -99,19 +104,24 @@ MyWindow::MyWindow(QWidget *parent) : QWidget(parent) {
     qreal maxSP = 2.0;
     qreal stepSP = 0.1;
     qreal decimalsSP = 1.0;
-    qreal initVal = 2.0;
+    qreal initValSP;
+
+    if((value < minSP) || (value > maxSP)) {
+        initValSP = 2.0;
+    }
+    else {
+        initValSP = value;
+    }
 
     spinBoxReductFact->setMinimum(minSP);
     spinBoxReductFact->setMaximum(maxSP);
     spinBoxReductFact->setSingleStep(stepSP);
     spinBoxReductFact->setDecimals(decimalsSP);
-    spinBoxReductFact->setValue(initVal);
+    spinBoxReductFact->setValue(initValSP);
+    spinBoxReductFact->setMaximumSize(QSize(100, 20));
 
     QVBoxLayout *work = new QVBoxLayout;
     QHBoxLayout *interFace = new QHBoxLayout;
-    QHBoxLayout *interFaceRF = new QHBoxLayout;
-
-    setImage();
 
     interFace->addWidget(openBut);
     interFace->addWidget(lblFile);
@@ -120,21 +130,25 @@ MyWindow::MyWindow(QWidget *parent) : QWidget(parent) {
     interFace->addWidget(listLayers);
     interFace->addWidget(lblSize);
     interFace->addWidget(lblResol);
-
-    interFaceRF->addWidget(lblReductFact);
-    interFaceRF->addWidget(spinBoxReductFact);
-
-    interFace->setSpacing(10);
-    interFace->setStretch(0, 20);
-    interFace->setStretch(1, 10);
-    interFace->setStretch(2, 25);
-    interFace->setStretch(3, 10);
+    interFace->setSpacing(5);
+    interFace->setStretch(0, 5);
+    interFace->setStretch(2, 10);
 
     work->addWidget(sa);
     work->addItem(interFace);
-    work->addItem(interFaceRF);
+    work->addWidget(lblReductFact);
+    work->addWidget(spinBoxReductFact);
+
     setWindowTitle("Pyramid");
     setLayout(work);
+    QSize sizeWind(510, 510);
+    setMaximumSize(sizeWind);
+
+    if(!fileName.isEmpty()) {
+        openConsole(fileName);
+    }
+
+    setImage();
 
     connect(listLayers, SIGNAL(currentIndexChanged(int)), this, SLOT(changeLayer(int)));
     connect(listFiles, SIGNAL(currentIndexChanged(int)), this, SLOT(changeFile(int)));
@@ -171,9 +185,7 @@ void MyWindow::changeFile(int number) {
         *imageSource = images[number].getImage();
         display->setPixmap(*imageCurrent);
         display->adjustSize();
-        //QMessageBox check;
-        //check.setText("Попался");
-        //check.exec();
+
         refreshListLayers(number);
     }
 }
@@ -205,6 +217,44 @@ void MyWindow::changeLayer(int layer) {
     }
 }
 
+void MyWindow::openConsole(QString fileName) {
+
+    if(!QFile(fileName).exists())
+        return;
+
+    QPixmap bufPixmap;
+
+    if(!bufPixmap.load(fileName))
+        return;
+
+    QFileInfo fi(fileName);
+    QString ext = fi.suffix();
+
+    if((ext == "jpg") || (ext == "png")) {
+
+        QString name = parser(fileName);
+
+        // Add image
+        Image bufImage(name, fileName, bufPixmap);
+        images.push_back(bufImage);
+
+        refreshListFiles();
+
+        int index = 0;
+
+        *imageCurrent = images[index].getImage();
+        *imageSource = images[index].getImage();
+        listFiles->setCurrentIndex(index);
+        refreshListLayers(index);
+        setImage();
+    }
+    else {
+        QMessageBox mess;
+        mess.setText("Выберите поддерживаемый формат приложения jpg или png");
+        mess.exec();
+    }
+}
+
 void MyWindow::open() {
 
     QString fileName = QFileDialog::getOpenFileName(this, "Open file", qApp->applicationDirPath(), "Images (*.jpg *.png)");
@@ -212,10 +262,11 @@ void MyWindow::open() {
     if(!QFile(fileName).exists())
         return;
 
-    QPixmap bufQ;
+    QPixmap bufPixmap;
 
-    if(!bufQ.load(fileName))
+    if(!bufPixmap.load(fileName))
         return;
+
 
     QString name = parser(fileName);
 
@@ -223,30 +274,28 @@ void MyWindow::open() {
 
     if(index == images.size()) {
         // Add image
-        Image buf(name, fileName, bufQ);       
-        images.push_back(buf);
+        Image bufImage(name, fileName, bufPixmap);
+        images.push_back(bufImage);
 
         std::sort(images.begin(), images.end(), comp);
 
         refreshListFiles();
 
         index = findIndex(name, fileName, images);
-
         *imageCurrent = images[index].getImage();
         *imageSource = images[index].getImage();
         listFiles->setCurrentIndex(index);
-        //refreshListLayers(index);
 
         setImage();
     }
     else {
-        // Image is exist
-        *imageCurrent = images[index].getImage();
-        *imageSource = images[index].getImage();
-        listFiles->setCurrentIndex(index);
-        refreshListLayers(index);
+       // Image is exist
+       *imageCurrent = images[index].getImage();
+       *imageSource = images[index].getImage();
+       listFiles->setCurrentIndex(index);
+       refreshListLayers(index);
 
-        setImage();
+       setImage();
     }
 }
 
@@ -267,7 +316,6 @@ QPixmap blur(QPixmap image) {
     QImage blur = image.toImage();
     QImage source = image.toImage();
 
-    // blur.setP
     QMatrix3x3 kernel;
         kernel(0, 0) = 1; kernel(0, 1) = 2; kernel(0, 2) = 1;
         kernel(1, 0) = 2; kernel(1, 1) = 4; kernel(1, 2) = 2;

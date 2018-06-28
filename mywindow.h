@@ -31,7 +31,7 @@ private:
 class MyWindow : public QWidget {
     Q_OBJECT
 public:
-    MyWindow(QWidget *parent=0);
+    MyWindow(double value, QString fileName);
     qreal getReductFactor() {
         return spinBoxReductFact->value();
     }
@@ -53,6 +53,7 @@ private:
     void setImage();
     void refreshListLayers(int);
     void refreshListFiles();
+    void openConsole(QString fileName);
 private slots:
     void changeLayer(int);
     void changeFile(int);
