@@ -30,7 +30,4 @@ SOURCES += \
 HEADERS += \
         mywindow.h
 
-FORMS += \
-        mywindow.ui
-
 RESOURCES +=
