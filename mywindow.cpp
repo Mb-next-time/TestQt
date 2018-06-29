@@ -193,27 +193,20 @@ void MyWindow::changeFile(int number) {
 void MyWindow::changeLayer(int layer) {
 
     if(layer > -1) {
-        if(layer == 0) {
-            lblResol->setText(QString::number(imageSource->width()) + " x " + QString::number(imageSource->height()));
-            *imageCurrent = *imageSource;
-            display->setPixmap(*imageCurrent);
-            display->adjustSize();
+        QPixmap *imageBuf = new QPixmap;
+        qreal koef = qPow(getReductFactor(), layer);
+        int countLayers = 0;
+        *imageCurrent = *imageSource;
+        while(countLayers != layer) {
+            *imageBuf = blur(*imageCurrent);
+            *imageCurrent = imageCurrent->scaled(imageBuf->width()/getReductFactor(), imageBuf->height()/getReductFactor(),  Qt::IgnoreAspectRatio);
+            countLayers++;
         }
-        else {
-            qreal koef = qPow(getReductFactor(), layer - 1);
-            QPixmap *imageBuf = new QPixmap;
-            QPixmap *imageBlur = new QPixmap;
-            *imageBuf = imageSource->scaled(imageSource->width()/koef, imageSource->height()/koef,  Qt::IgnoreAspectRatio);
-            *imageBlur = blur(*imageBuf);
-            koef = qPow(getReductFactor(), layer);
-            *imageBuf = imageBlur->scaled(imageSource->width()/koef, imageSource->height()/koef,  Qt::IgnoreAspectRatio);
-            lblResol->setText(QString::number((int)(imageSource->width()/koef)) + " x " + QString::number((int)(imageSource->height()/koef)));
-            *imageCurrent = imageBuf->scaled(imageBuf->width()*koef, imageBuf->height()*koef,  Qt::IgnoreAspectRatio);
-            display->setPixmap(*imageCurrent);
-            display->adjustSize();
-            delete imageBuf;
-            delete imageBlur;
-        }
+        *imageCurrent = imageCurrent->scaled(imageCurrent->width()*koef, imageCurrent->height()*koef,  Qt::IgnoreAspectRatio);
+        lblResol->setText(QString::number((int)(imageSource->width()/koef)) + " x " + QString::number((int)(imageSource->height()/koef)));
+        display->setPixmap(*imageCurrent);
+        display->adjustSize();
+        delete imageBuf;
     }
 }
 
