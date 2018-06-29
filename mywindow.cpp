@@ -199,7 +199,7 @@ void MyWindow::changeLayer(int layer) {
         *imageCurrent = *imageSource;
         while(countLayers != layer) {
             *imageBuf = blur(*imageCurrent);
-            *imageCurrent = imageCurrent->scaled(imageBuf->width()/getReductFactor(), imageBuf->height()/getReductFactor(),  Qt::IgnoreAspectRatio);
+            *imageCurrent = imageBuf->scaled((int)(imageBuf->width()/getReductFactor()), (int)(imageBuf->height()/getReductFactor()),  Qt::IgnoreAspectRatio);
             countLayers++;
         }
         *imageCurrent = imageCurrent->scaled(imageCurrent->width()*koef, imageCurrent->height()*koef,  Qt::IgnoreAspectRatio);

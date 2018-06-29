@@ -52,7 +52,6 @@ private:
     QVector<Image> images;
     void setImage();
     void refreshListLayers(int);
-    QPixmap buildPyramid(QPixmap image, int layer);
     void refreshListFiles();
     void openConsole(QString fileName);
 private slots:
