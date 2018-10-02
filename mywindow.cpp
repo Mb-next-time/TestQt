@@ -260,7 +260,6 @@ void MyWindow::open() {
     if(!bufPixmap.load(fileName))
         return;
 
-
     QString name = parser(fileName);
 
     int index = findIndex(name, fileName, images);
